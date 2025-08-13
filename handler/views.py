@@ -279,17 +279,13 @@ class Analytics(viewsets.ViewSet):
             return Response({"error": "Email query parameter 'user' is required"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Only allow the user themselves or admin to view
-
         try:
             get_user = User.objects.get(email=requested_email)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # All requests for this user
         get_requests = ModerationRequest.objects.filter(user=get_user)
 
-        # All results for those requests
         get_results = ModerationResult.objects.filter(request__in=get_requests)
 
         if not get_results.exists():
@@ -301,15 +297,12 @@ class Analytics(viewsets.ViewSet):
                 "last_activity": None
             }, status=status.HTTP_200_OK)
 
-        # Count per category
         category_counts_qs = get_results.values(
             "classification").annotate(count=Count("classification"))
         category_counts = {item["classification"]: item["count"] for item in category_counts_qs}
 
-        # Average confidence
         avg_conf = get_results.aggregate(avg_conf=Avg("confidence"))["avg_conf"] or 0
 
-        # Last activity
         last_request = get_requests.order_by("-created_at").first()
         last_activity = last_request.created_at if last_request else None
 
