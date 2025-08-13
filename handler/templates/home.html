@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Home</title>
+  </head>
+
+  <body>
+    <h2>Content Moderation Home</h2>
+    <button onclick="logout()">Logout</button>
+    <button onclick="getAnalytics()">Analytics</button>
+    <!-- New button -->
+    <br /><br />
+
+    <textarea
+      id="userText"
+      placeholder="Type something..."
+      rows="4"
+      cols="50"
+    ></textarea
+    ><br />
+
+    <input type="file" id="fileUpload" /><br /><br />
+
+    <button onclick="submitContent()">Submit</button>
+
+    <p id="message"></p>
+
+    <script>
+      const token = localStorage.getItem("access");
+      const userEmail = localStorage.getItem("email");
+
+      if (!token) {
+        alert("You must be logged in first!");
+        window.location.href = "http://127.0.0.1:8000/login/";
+      }
+
+      async function submitContent() {
+        const text = document.getElementById("userText").value;
+        const fileInput = document.getElementById("fileUpload").files[0];
+
+        const formData = new FormData();
+        formData.append("email", userEmail);
+        formData.append("text", text);
+        if (fileInput) {
+          formData.append("file", fileInput);
+        }
+
+        const response = await fetch(
+          "http://127.0.0.1:8000/handler/api/v1/moderate/text/",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          },
+        );
+
+        const result = await response.json();
+        document.getElementById("message").innerText = JSON.stringify(
+          result,
+          null,
+          2,
+        );
+      }
+
+      async function getAnalytics() {
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:8000/handler/api/summary/?user=${encodeURIComponent(userEmail)}`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          );
+
+          if (!response.ok) {
+            throw new Error(`Error: ${response.status} ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          document.getElementById("message").innerText =
+            "Analytics Data:\n" + JSON.stringify(data, null, 2);
+        } catch (error) {
+          document.getElementById("message").innerText = error.message;
+        }
+      }
+
+      async function logout() {
+        const refresh = localStorage.getItem("refresh");
+        await fetch("http://127.0.0.1:8000/handler/api/logout/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: refresh }),
+        });
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+        window.location.href = "http://127.0.0.1:8000/handler/api/login/";
+      }
+    </script>
+  </body>
+</html>
